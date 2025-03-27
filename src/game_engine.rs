@@ -48,10 +48,23 @@ impl GameEngine {
                 .player2
                 .take_damage(self.game_state.sandstorm_damage, "Sandstorm");
         }
+
+        if self.game_state.player1.health < 0 {
+            self.game_state.game_ended = true;
+            self.game_state.winner = Some(self.game_state.player2.name.clone());
+        }
+        if self.game_state.player2.health < 0 {
+            self.game_state.game_ended = true;
+            let winner = match self.game_state.winner {
+                Some(ref winner) => winner.clone(),
+                None => "".to_string(),
+            };
+            self.game_state.winner = Some(format!("{} {}", winner, self.game_state.player1.name));
+        }
     }
 
     pub fn tick_until_winner(&mut self) {
-        while (self.game_state.player1.health > 0) && (self.game_state.player2.health > 0) {
+        while self.game_state.game_ended == false {
             self.tick();
         }
     }

@@ -216,5 +216,6 @@ mod tests {
         game_engine.tick_until_winner();
 
         assert_eq!(game_engine.game_state.player2.health, -22);
+        assert_eq!(game_engine.game_state.winner, Some("Kripp1".to_string()));
     }
 }

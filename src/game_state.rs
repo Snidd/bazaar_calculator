@@ -7,6 +7,8 @@ pub struct GameState {
     pub player2: PlayerState,
     pub current_tick: i32,
     pub sandstorm_damage: i32,
+    pub game_ended: bool,
+    pub winner: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -22,6 +24,8 @@ impl GameState {
             player2,
             current_tick: 0,
             sandstorm_damage: 0,
+            game_ended: false,
+            winner: None,
         }
     }
 }
