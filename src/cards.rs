@@ -1,4 +1,7 @@
-use crate::game_state::{GameItem, ItemAction};
+use crate::{
+    game_engine::ONE_SECOND_IN_TICKS,
+    game_state::{GameItem, ItemAction, ItemTrigger, TriggerType},
+};
 
 pub fn junkyard_club() -> GameItem {
     GameItem::new("Junkyard Club", 0, 110, None, vec![ItemAction::Damage(60)])
@@ -32,13 +35,57 @@ pub fn improvised_bludgeon() -> GameItem {
     )
 }
 //ItemAction::Slow(2, 4)
+pub struct Boomerang {}
+impl Boomerang {
+    pub fn new(level: GameItemLevel) -> GameItem {
+        let damage = match level {
+            GameItemLevel::Bronze => 20,
+            GameItemLevel::Silver => 30,
+            GameItemLevel::Gold => 40,
+            GameItemLevel::Diamond => 50,
+        };
+        GameItem::new("boomerang", 0, 50, None, vec![ItemAction::Damage(damage)])
+    }
+}
 
 pub fn boomerang() -> GameItem {
-    GameItem::new("boomerang", 0, 50, None, vec![ItemAction::Damage(30)])
+    Boomerang::new(GameItemLevel::Silver)
 }
 
 pub fn sunderer() -> GameItem {
     GameItem::new("sunderer", 0, 50, None, vec![ItemAction::Damage(10)])
+}
+
+pub struct RestorativeSteamLadle {}
+impl RestorativeSteamLadle {
+    pub fn new(_: GameItemLevel) -> GameItem {
+        GameItem::new(
+            "Restorative Steam Ladle",
+            0,
+            40,
+            None,
+            vec![ItemAction::Heal(20), ItemAction::Burn(2)],
+        )
+    }
+}
+
+pub struct UwashiwaliBird {}
+impl UwashiwaliBird {
+    pub fn new(level: GameItemLevel) -> GameItem {
+        let healing = match level {
+            GameItemLevel::Bronze => 10,
+            GameItemLevel::Silver => 20,
+            GameItemLevel::Gold => 40,
+            GameItemLevel::Diamond => 80,
+        };
+        GameItem::new(
+            "Uwashiwali Bird",
+            0,
+            50,
+            None,
+            vec![ItemAction::Heal(healing)],
+        )
+    }
 }
 
 pub struct Weights {}
@@ -63,7 +110,33 @@ impl Weights {
                 ItemAction::IncreaseAllHealing(25),
             ],
         };
-        GameItem::new("Weights", 0, 50, None, actions)
+
+        let mut item = GameItem::new("Weights", 0, 50, None, actions);
+        let trigger = ItemTrigger {
+            item_id: item.id,
+            trigger_type: TriggerType::OnHealing,
+            trigger: |action_taken, player, _| {
+                let healing_amount = match action_taken {
+                    ItemAction::Heal(heal) => heal,
+                    _ => 0,
+                };
+
+                if healing_amount == 0 {
+                    return;
+                }
+
+                if healing_amount + player.health <= player.max_health {
+                    return;
+                }
+
+                let self_item = player.field.iter_mut().find(|item| item.name == "Weights");
+                if let Some(item) = self_item {
+                    item.ticks_left = item.ticks_left - ONE_SECOND_IN_TICKS;
+                }
+            },
+        };
+        item.triggers.push(trigger);
+        item
     }
 }
 

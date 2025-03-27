@@ -35,10 +35,15 @@ pub struct PlayerState {
     pub poison: i32,
     pub burn: i32,
     pub field: Vec<GameItem>,
+    pub triggers: Vec<ItemTrigger>,
 }
 
 impl PlayerState {
     pub fn new(health: i32, field: Vec<GameItem>, name: String) -> PlayerState {
+        let triggers = field
+            .iter()
+            .flat_map(|item| item.triggers.clone())
+            .collect_vec();
         PlayerState {
             name,
             health,
@@ -47,6 +52,7 @@ impl PlayerState {
             poison: 0,
             burn: 0,
             field,
+            triggers,
         }
     }
 
@@ -88,6 +94,24 @@ impl PlayerState {
             "- DMG: {} Health/shield before/after ({}/{}) ({},{}) - {}",
             damage, health_before, shield_before, self.health, self.shield, source
         );
+    }
+
+    fn trigger_healing(&mut self, heal: i32, opponent: &mut PlayerState) {
+        let triggers = self
+            .triggers
+            .iter()
+            .filter(|trigger| trigger.trigger_type == TriggerType::OnHealing)
+            .cloned()
+            .collect_vec();
+
+        for trigger in triggers {
+            let item = self
+                .field
+                .iter_mut()
+                .find(|item| item.id == trigger.item_id)
+                .unwrap();
+            (trigger.trigger)(ItemAction::Heal(heal), self, opponent)
+        }
     }
 
     pub fn tick(&mut self, opponent: &mut PlayerState, amount: i32) {
@@ -136,6 +160,7 @@ impl PlayerState {
                         "{}: Healing for {}, health now {}",
                         self.name, heal, self.health
                     );
+                    self.trigger_healing(heal, opponent);
                 }
                 ItemAction::Slow(items_count, slow_amount) => {
                     let mut rng = rand::rng();
@@ -175,6 +200,19 @@ impl PlayerState {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum TriggerType {
+    OnGameStart,
+    OnHealing,
+}
+
+#[derive(Clone, Debug)]
+pub struct ItemTrigger {
+    pub item_id: i32,
+    pub trigger_type: TriggerType,
+    pub trigger: fn(ItemAction, &mut PlayerState, &mut PlayerState),
+}
+
 #[derive(Clone, Debug)]
 pub struct GameItem {
     pub name: String,
@@ -185,6 +223,7 @@ pub struct GameItem {
     pub ammo: Option<i32>,
     pub ticks_left: i32,
     pub actions: Vec<ItemAction>,
+    pub triggers: Vec<ItemTrigger>,
     pub slow_ticks_left: Option<i32>,
     pub haste_ticks_left: Option<i32>,
 }
@@ -201,11 +240,35 @@ impl GameItem {
             name: name.to_string(),
             id: 1,
             crit_chance,
+            cooldown: cooldown + 20,
+            cooldown_modifier: 0,
+            ammo,
+            ticks_left: cooldown * 10,
+            actions,
+            triggers: Vec::new(),
+            slow_ticks_left: None,
+            haste_ticks_left: None,
+        }
+    }
+
+    pub fn new_with_triggers(
+        name: &str,
+        crit_chance: i32,
+        cooldown: i32,
+        ammo: Option<i32>,
+        actions: Vec<ItemAction>,
+        triggers: Vec<ItemTrigger>,
+    ) -> GameItem {
+        GameItem {
+            name: name.to_string(),
+            id: 1,
+            crit_chance,
             cooldown: cooldown,
             cooldown_modifier: cooldown,
             ammo,
             ticks_left: cooldown * 10,
             actions,
+            triggers,
             slow_ticks_left: None,
             haste_ticks_left: None,
         }

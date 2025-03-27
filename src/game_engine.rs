@@ -4,6 +4,8 @@ pub struct GameEngine {
     pub game_state: GameState,
 }
 
+pub const ONE_SECOND_IN_TICKS: i32 = 100;
+
 impl GameEngine {
     pub fn new(game_state: GameState) -> GameEngine {
         GameEngine { game_state }
@@ -11,7 +13,7 @@ impl GameEngine {
 
     pub fn tick(&mut self) {
         // 100 is one second
-        let amount_to_tick = 10;
+        let amount_to_tick = ONE_SECOND_IN_TICKS / 10;
         self.game_state.current_tick += amount_to_tick;
         self.game_state
             .player1

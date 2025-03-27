@@ -6,7 +6,7 @@ fn main() {
 mod tests {
     use bazaarcalculator::{
         cards::*,
-        example_players::example_player1,
+        example_players::{example_kripp1, example_player1},
         game_state::{GameItem, ItemAction, PlayerState},
         monsters::rogue_scrapper,
     };
@@ -158,5 +158,63 @@ mod tests {
             .unwrap();
 
         assert_eq!(test_heal.actions[0], ItemAction::Heal(25));
+    }
+
+    #[test]
+    fn triggered_weight_test() {
+        let player1 = PlayerState::new(200, vec![], "P1".to_string());
+        let mut player2 = PlayerState::new(
+            200,
+            vec![
+                GameItem::new("TestDamage", 0, 60, None, vec![ItemAction::Damage(10)]),
+                GameItem::new("TestHeal", 0, 10, None, vec![ItemAction::Heal(10)]),
+                Weights::new(GameItemLevel::Silver),
+            ],
+            "P2".to_string(),
+        );
+        player2.health = 180;
+        let mut game_engine = bazaarcalculator::game_engine::GameEngine::new(
+            bazaarcalculator::game_state::GameState::new(player1, player2),
+        );
+
+        for _ in 0..40 {
+            game_engine.tick();
+        }
+
+        assert_eq!(game_engine.game_state.current_tick, 400);
+        assert_eq!(game_engine.game_state.player1.health, 200);
+        assert_eq!(game_engine.game_state.player2.health, 200);
+
+        let test_dmg = game_engine
+            .game_state
+            .player2
+            .field
+            .iter()
+            .find(|item| item.name == "TestDamage")
+            .unwrap();
+
+        assert_eq!(test_dmg.actions[0], ItemAction::Damage(25));
+
+        let test_heal = game_engine
+            .game_state
+            .player2
+            .field
+            .iter()
+            .find(|item| item.name == "TestHeal")
+            .unwrap();
+
+        assert_eq!(test_heal.actions[0], ItemAction::Heal(25));
+    }
+
+    #[test]
+    fn kripp1_test() {
+        let player1 = example_kripp1();
+        let player2 = rogue_scrapper();
+        let mut game_engine = bazaarcalculator::game_engine::GameEngine::new(
+            bazaarcalculator::game_state::GameState::new(player1, player2),
+        );
+        game_engine.tick_until_winner();
+
+        assert_eq!(game_engine.game_state.player2.health, -22);
     }
 }
